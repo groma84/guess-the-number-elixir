@@ -10,71 +10,27 @@ import Json.Encode
 import Url.Builder
 
 
-
--- ---------------------------
--- MODEL
--- ---------------------------
-
-
-type alias SessionId =
-    Int
-
-
 type State
     = NotConnected
     | Playing
 
 
-type GuessResult
-    = FatalError
-    | Correct
-    | WrongHigher
-    | WrongLower
-    | AlreadyGuessed
-
-
 type alias Model =
     { state : State
-    , sessionId : Maybe SessionId
-    , guessString : String
-    , guess : Maybe Int
-    , lastGuessResult : Maybe GuessResult
+    , sessionId : Maybe Int
+    , guess : String
+    , result : Maybe String
     }
 
 
 init : () -> ( Model, Cmd Msg )
-init flags =
-    ( { state = NotConnected
-      , sessionId = Nothing
-      , guessString = ""
-      , guess = Nothing
-      , lastGuessResult = Nothing
-      }
-    , Cmd.none
-    )
-
-
-
--- JSON
-
-
-connectDecoder =
-    Json.Decode.field "sessionId" Json.Decode.int
-
-
-resultDecoder =
-    Json.Decode.field "result" Json.Decode.string
-
-
-
--- ---------------------------
--- UPDATE
--- ---------------------------
+init _ =
+    ( { state = NotConnected, sessionId = Nothing, guess = "", result = Nothing }, Cmd.none )
 
 
 type Msg
     = Connect
-    | Connected (Result Http.Error SessionId)
+    | Connected (Result Http.Error Int)
     | Disconnect
     | Disconnected (Result Http.Error ())
     | GuessChanged String
@@ -82,26 +38,14 @@ type Msg
     | GuessResultReceived (Result Http.Error String)
 
 
-parseResultString : String -> GuessResult
-parseResultString s =
-    case s of
-        "fatal_error" ->
-            FatalError
+sessionIdDecoder : Json.Decode.Decoder Int
+sessionIdDecoder =
+    Json.Decode.field "sessionId" Json.Decode.int
 
-        "correct" ->
-            Correct
 
-        "wrong_higher" ->
-            WrongHigher
-
-        "wrong_lower" ->
-            WrongLower
-
-        "already_guessed" ->
-            AlreadyGuessed
-
-        _ ->
-            FatalError
+resultDecoder : Json.Decode.Decoder String
+resultDecoder =
+    Json.Decode.field "result" Json.Decode.string
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -113,7 +57,7 @@ update message model =
                     Url.Builder.relative [ "api", "session", "connect" ] []
 
                 getCmd =
-                    Http.get { url = requestUrl, expect = Http.expectJson Connected connectDecoder }
+                    Http.get { url = requestUrl, expect = Http.expectJson Connected sessionIdDecoder }
             in
             ( model, getCmd )
 
@@ -145,116 +89,103 @@ update message model =
             in
             ( model, disconnectCmd )
 
-        Disconnected _ ->
+        Disconnected result ->
             init ()
 
-        GuessChanged guessString ->
-            ( { model | guessString = guessString, guess = String.toInt guessString }, Cmd.none )
+        GuessChanged guess ->
+            ( { model | guess = guess }, Cmd.none )
 
         SendGuess ->
-            let
-                guessCmd =
-                    case ( model.sessionId, model.guess ) of
-                        ( Just sId, Just g ) ->
-                            let
-                                requestUrl =
-                                    Url.Builder.relative [ "api", "guess" ] [ Url.Builder.int "sessionId" sId, Url.Builder.int "guess" g ]
-                            in
-                            Http.get { url = requestUrl, expect = Http.expectJson GuessResultReceived resultDecoder }
+            if String.isEmpty model.guess then
+                ( model, Cmd.none )
 
-                        ( _, _ ) ->
-                            Cmd.none
-            in
-            ( { model | lastGuessResult = Nothing }, guessCmd )
+            else
+                case model.sessionId of
+                    Nothing ->
+                        ( model, Cmd.none )
+
+                    Just sId ->
+                        let
+                            requestUrl =
+                                Url.Builder.relative [ "api", "guess" ] [ Url.Builder.string "guess" model.guess, Url.Builder.int "sessionId" sId ]
+
+                            getCmd =
+                                Http.get { url = requestUrl, expect = Http.expectJson GuessResultReceived resultDecoder }
+                        in
+                        ( model, getCmd )
 
         GuessResultReceived result ->
-            case result of
-                Ok s ->
-                    ( { model | lastGuessResult = Just <| parseResultString s }, Cmd.none )
+            let
+                extractedResult =
+                    case result of
+                        Ok r ->
+                            r
 
-                Err _ ->
-                    ( { model | lastGuessResult = Just FatalError }, Cmd.none )
+                        Err _ ->
+                            "fatal_error"
+            in
+            ( { model | result = Just extractedResult }, Cmd.none )
 
 
+humanReadableResult : String -> String
+humanReadableResult result =
+    case result of
+        "fatal_error" ->
+            "A fatal error occured. Sorry!"
 
--- ---------------------------
--- VIEW
--- ---------------------------
+        "correct" ->
+            "You have won!"
+
+        "wrong_higher" ->
+            "You guessed too low. Try a higher number."
+
+        "wrong_lower" ->
+            "You guessed too high - try a lower number."
+
+        "already_guessed" ->
+            "You already tried that number."
+
+        _ ->
+            "Invalid response received."
 
 
 view : Model -> Html Msg
 view model =
     let
-        connectView =
-            div [] [ button [ onClick Connect, autofocus True ] [ text "Start game" ] ]
-
         playView =
-            let
-                guessResultText result =
-                    case result of
-                        FatalError ->
-                            "A fatal error occured. Sorry!"
+            div [ style "display" "flex", style "flex-direction" "column" ]
+                [ input [ type_ "number", onInput GuessChanged, Html.Attributes.min "1", Html.Attributes.max "100", required True, placeholder "Guess a number between 1 and 100" ] []
+                , case model.result of
+                    Nothing ->
+                        button [ onClick SendGuess ] [ text "Send guess" ]
 
-                        Correct ->
-                            "You have won!"
+                    Just r ->
+                        if r == "correct" then
+                            text ""
 
-                        WrongHigher ->
-                            "You guessed too low. Try a higher number."
+                        else
+                            button [ onClick SendGuess ] [ text "Send guess" ]
+                , button [ onClick Disconnect ] [ text "Disconnect" ]
+                , case model.result of
+                    Nothing ->
+                        text ""
 
-                        WrongLower ->
-                            "You guessed too high - try a lower number."
-
-                        AlreadyGuessed ->
-                            "You already tried that number."
-
-                guessResult =
-                    case model.lastGuessResult of
-                        Nothing ->
-                            p [] []
-
-                        Just r ->
-                            p [] [ text <| guessResultText r ]
-
-                guessForm =
-                    let
-                        f =
-                            Html.form [ onSubmit SendGuess ]
-                                [ input [ type_ "number", Html.Attributes.min "1", Html.Attributes.max "100", required True, placeholder "Guess a number between 1 and 100", onInput GuessChanged ] []
-                                , button [ type_ "submit" ] [ text "Send guess" ]
-                                ]
-                    in
-                    case model.lastGuessResult of
-                        Just s ->
-                            case s of
-                                Correct ->
-                                    text ""
-
-                                _ ->
-                                    f
-
-                        Nothing ->
-                            f
-            in
-            div []
-                [ guessForm
-                , guessResult
-                , button [ type_ "button", onClick Disconnect, style "margin" "5rem" ] [ text "End game" ]
+                    Just r ->
+                        p [] [ text (humanReadableResult r) ]
                 ]
+
+        notConnectedView =
+            div [] [ button [ onClick Connect ] [ text "Connect" ] ]
+
+        shownView =
+            case model.state of
+                NotConnected ->
+                    notConnectedView
+
+                Playing ->
+                    playView
     in
-    div []
-        [ case model.state of
-            NotConnected ->
-                connectView
-
-            Playing ->
-                playView
-        ]
-
-
-
--- ---------------------------
--- MAIN
--- ---------------------------
+    div [] [ shownView ]
 
 
 main : Program () Model Msg

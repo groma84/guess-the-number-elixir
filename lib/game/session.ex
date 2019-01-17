@@ -29,8 +29,21 @@ defmodule Game.Session do
   def handle_call({:guess, guess}, _from, state) do
     result =
       case Enum.member?(state.guesses, guess) do
-        true -> :already_guessed
-        false -> check_guess(guess, state.number)
+        true ->
+          :already_guessed
+
+        false ->
+          case guess === state.number do
+            true ->
+              :correct
+
+            false ->
+              if guess < state.number do
+                :wrong_higher
+              else
+                :wrong_lower
+              end
+          end
       end
 
     {:reply, result, %GameState{state | guesses: [guess | state.guesses]}}

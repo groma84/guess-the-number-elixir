@@ -6,12 +6,8 @@ defmodule Game.Application do
   use Application
 
   def start(_type, _args) do
-    # List all child processes to be supervised
     children = [
-      # Start the endpoint when the application starts
       GameWeb.Endpoint,
-      # Starts a worker by calling: Game.Worker.start_link(arg)
-      # {Game.Worker, arg},
       Game.SessionStore,
       Game.SessionSupervisor
     ]

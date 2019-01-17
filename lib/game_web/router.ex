@@ -11,6 +11,7 @@ defmodule GameWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_query_params
   end
 
   scope "/", GameWeb do
@@ -20,7 +21,7 @@ defmodule GameWeb.Router do
   end
 
   scope "/api", GameWeb do
-    pipe_through [:api, :fetch_query_params]
+    pipe_through :api
 
     get "/guess", GuessController, :guess
     get "/session/connect", SessionController, :connect
