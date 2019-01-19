@@ -7,9 +7,9 @@ defmodule Game.Application do
 
   def start(_type, _args) do
     children = [
-      GameWeb.Endpoint,
       Game.SessionStore,
-      Game.SessionSupervisor
+      Game.SessionSupervisor,
+      GameWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
