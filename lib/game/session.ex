@@ -10,7 +10,8 @@ defmodule Game.Session do
     {:ok, %GameState{number: Enum.random(1..100)}}
   end
 
-  def guess(pid, guess) do
+  def guess(session_id, guess) do
+    pid = Game.SessionStore.session_id_to_pid(session_id)
     GenServer.call(pid, {:guess, guess})
   end
 
