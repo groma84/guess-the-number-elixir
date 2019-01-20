@@ -128,16 +128,39 @@ update message model =
 view : Model -> Html Msg
 view model =
     let
+        resultText =
+            case model.result of
+                Nothing ->
+                    ""
+
+                Just r ->
+                    case r of
+                        "correct" ->
+                            "Correct!"
+
+                        "already_guessed" ->
+                            "Already guessed that."
+
+                        "wrong_higher" ->
+                            "You need to guess higher!"
+
+                        "wrong_lower" ->
+                            "You need to guess lower!"
+
+                        _ ->
+                            ""
+
         disconnectButton =
             button [ type_ "button", onClick Disconnect ] [ text "Disconnect" ]
 
         wonView =
-            div [] [ disconnectButton ]
+            div [] [ text "You have WON!", disconnectButton ]
 
         playView =
             div []
                 [ input [ type_ "number", Html.Attributes.min "1", Html.Attributes.max "100", placeholder "Input number from 1 to 100", onInput GuessChanged, required True ] []
                 , button [ type_ "button", onClick SendGuess ] [ text "Send guess" ]
+                , div [] [ text resultText ]
                 , disconnectButton
                 ]
 
