@@ -106,7 +106,7 @@ update message model =
                         cmd =
                             Http.get { url = url, expect = Http.expectJson ResultReceived resultDecoder }
                     in
-                    ( model, cmd )
+                    ( { model | result = Nothing }, cmd )
 
                 ( _, _ ) ->
                     ( model, Cmd.none )
