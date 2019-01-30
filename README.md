@@ -1,19 +1,16 @@
-# Game
+# Guess the Number - Game
 
-To start your Phoenix server:
+I use this code for demonstration purposes in my "Hyperproduktiv mit Elixir, Phoenix und Elm" talk.
+
+The code I like most is stored in the branch `both_combined_again`. 
+
+The program is far from perfect - especially the Elixir supervision and crash recovery behaviour have lots of potential for improvement. On the client mostly quality of life improvements are missing.
+
+
+To start the Phoenix server:
 
   * Install dependencies with `mix deps.get`
   * Install Node.js dependencies with `cd assets && npm install`
-  * Start Phoenix endpoint with `mix phx.server`
+  * Start Phoenix endpoint with `cd .. && mix phx.server`
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
-
-## Learn more
-
-  * Official website: http://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Mailing list: http://groups.google.com/group/phoenix-talk
-  * Source: https://github.com/phoenixframework/phoenix
