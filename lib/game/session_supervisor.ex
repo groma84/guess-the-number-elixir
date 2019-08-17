@@ -3,6 +3,7 @@ defmodule Game.SessionSupervisor do
 
   @me SessionSupervisor
 
+  @spec connect() :: non_neg_integer()
   def connect() do
     {:ok, pid} = DynamicSupervisor.start_child(@me, Game.Session)
     Game.SessionStore.add(pid)
